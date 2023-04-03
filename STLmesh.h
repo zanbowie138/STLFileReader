@@ -1,15 +1,15 @@
 #pragma once
 
 #include <fstream>
-#include <unordered_set>
+#include <set>
 #include <vector>
 #include <iostream>
 
-#include "include/glm/glm.hpp"
+#include "include/glm/vec3.hpp"
 
 struct STLmesh
 {
-    std::unordered_set<glm::vec3> vertices;
+    std::set<glm::vec3> vertices;
     std::vector<unsigned int> indices;
 };
 

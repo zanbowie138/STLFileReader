@@ -1,7 +1,10 @@
 #include <iostream>
 
+#include "STLmesh.h"
+
 int main()
 {
-    std::cout << "Hello World" << std::endl;
+    convertSTL("bunny.stl");
+    std::cout << "Finished" << std::endl;
     return 0;
 }
