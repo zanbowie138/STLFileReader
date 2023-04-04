@@ -12,17 +12,18 @@
 struct compareVec3
 {
     // Adapted from https://stackoverflow.com/questions/46636721/how-do-i-use-glm-vector-relational-functions
-    bool operator() (const glm::vec3& lhs, const glm::vec3& rhs) const
+    bool operator() (const std::pair<glm::vec3, unsigned int>& lhs, const std::pair<glm::vec3, unsigned int>& rhs) const
     {
-        glm::vec3 nequ = glm::notEqual(lhs, rhs);
-        return glm::lessThan(lhs, rhs)[nequ[0] ? 0 : (nequ[1] ? 1 : 2)];
+        glm::vec3 nequ = glm::notEqual(lhs.first, rhs.first);
+        return glm::lessThan(lhs.first, rhs.first)[nequ[0] ? 0 : (nequ[1] ? 1 : 2)];
     }
 };
 
 struct STLmesh
 {
-    std::set<glm::vec3, compareVec3> vertices;
+    std::set<std::pair<glm::vec3, unsigned int>, compareVec3> vertices;
     std::vector<unsigned int> indices;
+    std::vector<glm::vec3> normals;
 };
 
 STLmesh convertSTL(const char* filepath);
