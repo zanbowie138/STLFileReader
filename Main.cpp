@@ -4,7 +4,7 @@
 
 int main()
 {
-    convertSTL("bunny.stl");
+    convertSTL("cube.stl");
     std::cout << "Finished" << std::endl;
     return 0;
 }

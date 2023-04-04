@@ -2,32 +2,37 @@
 
 STLmesh convertSTL(const char* filepath)
 {
-    std::set<glm::vec3> vertices;
+    // STL File format: https://people.sc.fsu.edu/~jburkardt/data/stlb/stlb.html
+    std::set<glm::vec3, compareVec3> vertices;
     std::vector<unsigned int> indices;
 
-    std::ifstream is(filepath, std::ios::binary);
+    std::string localDir = "";
+    std::ifstream is((localDir + filepath), std::ios::binary);
 
     // Get length of file
-    is.seekg (0, is.end);
-    int length = is.tellg();
-    is.seekg (0, is.beg);
+    //is.seekg (0, is.end);
+    //int length = is.tellg();
 
-    char * buffer = new char [length];
+    //std::cout << "Creating buffer of: " << length << " length." << std::endl;
 
-    std::cout << "Reading " << length << " characters... ";
+    // Create a buffer and input file into buffer
+    //char* buffer = new char[length];
+    //is.read(buffer, length);
 
-    // read data as a block:
-    is.read (buffer,length);
+    is.seekg(80);
 
-    if (is)
-      std::cout << "all characters read successfully.";
-    else
-      std::cout << "error: only " << is.gcount() << " could be read";
-    is.close();
+    // First 80 chars is the header (title)
+    // Next is the number of triangles, which is an unsigned integer (4 bytes or 4 chars).  Buffer index is offset by 80 chars
+    unsigned int numTriangles = 0;
 
-    // ...buffer contains the entire file...
+    int numberOfTriangles;
+    is.read((char*) &numberOfTriangles, sizeof(int));
 
-    delete[] buffer;
+    std::cout << "Number of triangles is: " << numberOfTriangles << std::endl;
+
+    // Now 
+
+    //delete[] buffer;
     
 
     is.close();
