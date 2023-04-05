@@ -11,9 +11,10 @@ struct Tri
 STLmesh convertSTL(const char* filepath)
 {
     // STL File format: https://people.sc.fsu.edu/~jburkardt/data/stlb/stlb.html
-    std::set<std::pair<glm::vec3, unsigned int>, compareVec3> vertices;
+
+    // Vertice will have position and normal information
+    std::set<std::tuple<glm::vec3, glm::vec3, unsigned int>, compareVec3> vertices;
     std::vector<unsigned int> indices;
-    std::vector<glm::vec3> normals;
 
     std::string localDir = "";
     std::ifstream is((localDir + filepath), std::ios::binary);
@@ -26,7 +27,8 @@ STLmesh convertSTL(const char* filepath)
 
     glm::vec3 temp;
     unsigned int indice = 0;
-    std::pair<std::set<std::pair<glm::vec3, unsigned int>>::iterator,bool> temp_pair;
+    std::pair<std::set<std::tuple<glm::vec3, glm::vec3, unsigned int>>::iterator,bool> temp_pair;
+    glm::vec3 temp_normal;
 
     for (int t = 0; t < numTriangles; t++)
     {
@@ -34,18 +36,32 @@ STLmesh convertSTL(const char* filepath)
 
         // Normal vector
         is.read((char*) &temp, sizeof(glm::vec3));
-        normals.push_back(temp);
+        temp_normal = temp;
 
         // 3 Vertexes
         for (int i = 0; i < 3; i++)
         {
             is.read((char*) &temp, sizeof(glm::vec3));
-            temp_pair = vertices.insert(std::pair<glm::vec3, unsigned int>{temp, indice});
+            temp_pair = vertices.insert(std::tuple<glm::vec3, glm::vec3, unsigned int>(temp, temp_normal, indice));
+
             // If inserted successfully, increment indice count and push a new indice value.  Else, find the copied vertex and push it's indice value.
-            temp_pair.second ? (indice++, indices.push_back(indice)) : (indices.push_back((*(temp_pair.first)).second)); 
+            if (temp_pair.second)
+            {
+                indices.push_back(indice);
+                indice++;
+            } else 
+            {
+                std::tuple<glm::vec3, glm::vec3, unsigned int> temp_vertex = (*(temp_pair.first));
+                vertices.erase(temp_vertex);
+
+                indices.push_back(std::get<2>(temp_vertex));
+
+                temp_vertex = std::make_tuple(std::get<0>(temp_vertex), std::get<1>(temp_vertex) + temp_normal, std::get<2>(temp_vertex));
+                vertices.insert(temp_vertex);
+            }
         }
         
     }
     is.close();
-    return STLmesh{vertices, indices, normals};
+    return STLmesh{vertices, indices};
 }
