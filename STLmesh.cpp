@@ -57,7 +57,7 @@ STLmesh readSTL(const char* filepath)
     return STLmesh{vertexes, indices};
 }
 
-// Basically the same function as above, but packs the vertex and indice information into a binary file.
+// Basically the same function as above, but also packs the vertex and indice information into a binary file.
 /*
 Format:
     # of vertexes, unsigned int - 4 bytes
