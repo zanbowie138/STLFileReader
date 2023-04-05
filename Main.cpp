@@ -4,11 +4,13 @@
 
 int main()
 {
+    packSTL("bunny.stl", "output.dat");
+    /*
     STLmesh mesh = readSTL("cube.stl");
 
     std::cout << "Finished reading!" << std::endl;
     std::cout << "Length of vertice array is: " << mesh.vertices.size() << std::endl;
-    std::cout << "Length of indice array is: " << mesh.indices.size() << std::endl;
+    std::cout << "Length of indice array is: " << mesh.indices.size() << std::endl;*/
 
     // Printing out the output
     /*

@@ -118,15 +118,16 @@ void packSTL(const char* stl_path, const char* output_path)
     is.close();
     
     // Packing
-    std::fstream fs(output_path, std::fstream::in | std::fstream::binary | std::fstream::trunc);
+    std::ofstream fs(output_path, std::ofstream::in | std::ofstream::binary | std::ofstream::trunc);
     fs << (unsigned int) vertexes.size() << (unsigned int) indices.size();
     for (std::tuple<glm::vec3, glm::vec3, unsigned int> v : vertexes)
     {
-        fs << std::get<0>(v).x << std::get<0>(v).y << std::get<0>(v).z << std::get<1>(v).x << std::get<1>(v).y << std::get<1>(v).z;
+        fs.write((char*)&std::get<0>(v), sizeof(glm::vec3));
+        fs.write((char*)&std::get<1>(v), sizeof(glm::vec3));
     }
     for (unsigned int i : indices)
     {
-        fs << i;
+        fs.write((char*)&i, sizeof(unsigned int));
     }
     fs.close();
 }
