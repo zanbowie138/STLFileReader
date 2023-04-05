@@ -119,11 +119,16 @@ void packSTL(const char* stl_path, const char* output_path)
     
     // Packing
     std::ofstream fs(output_path, std::ofstream::in | std::ofstream::binary | std::ofstream::trunc);
-    fs << (unsigned int) vertexes.size() << (unsigned int) indices.size();
+    unsigned int size_temp = vertexes.size();
+    fs.write((char*)&size_temp, sizeof(unsigned int));
+    size_temp = indices.size();
+    fs.write((char*)&size_temp, sizeof(unsigned int));
     for (std::tuple<glm::vec3, glm::vec3, unsigned int> v : vertexes)
     {
         fs.write((char*)&std::get<0>(v), sizeof(glm::vec3));
-        fs.write((char*)&std::get<1>(v), sizeof(glm::vec3));
+
+        glm::vec3 norm_normal = glm::normalize(std::get<1>(v));
+        fs.write((char*)&(norm_normal), sizeof(glm::vec3));
     }
     for (unsigned int i : indices)
     {
@@ -135,10 +140,6 @@ void packSTL(const char* stl_path, const char* output_path)
 void readPackedSTL(const char* data_path)
 {
     // Reading packed file
-    std::vector<glm::vec3> vertexes;
-    // Normals per vertex
-    std::vector<glm::vec3> normals;
-    std::vector<unsigned int> indices;
     unsigned int vertex_len;
     unsigned int ind_len;
 
@@ -146,20 +147,25 @@ void readPackedSTL(const char* data_path)
     is.seekg(0);
     is.read((char*)&vertex_len, sizeof(unsigned int));
     is.read((char*)&ind_len, sizeof(unsigned int));
+
+    glm::vec3 vertexes[vertex_len];
+    glm::vec3 indices[ind_len];
+    glm::vec3 normals[vertex_len];
+
     glm::vec3 temp;
     for (int i = 0; i < vertex_len; i++) 
     {
         is.read((char*)&temp, sizeof(glm::vec3));
-        vertexes.push_back(temp);
+        vertexes[i] = temp;
         is.read((char*)&temp, sizeof(glm::vec3));
-        normals.push_back(temp);
+        normals[i] = temp;
     }
     
     unsigned int temp_i;
     for (int i = 0; i < vertex_len; i++) 
     {
         is.read((char*)&temp, sizeof(unsigned int));
-        indices.push_back(temp_i);
+        indices[i] = temp;
     }
     is.close();
 }

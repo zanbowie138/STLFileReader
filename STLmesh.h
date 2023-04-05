@@ -9,6 +9,7 @@
 
 #include "include/glm/vec3.hpp"
 #include "include/glm/vector_relational.hpp"
+#include "include/glm/geometric.hpp"
 
 struct compareVec3
 {
