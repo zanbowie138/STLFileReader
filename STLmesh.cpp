@@ -1,19 +1,11 @@
 #include "STLmesh.h"
 
-struct Tri
-{
-    glm::vec3 n;
-    glm::vec3 v1;
-    glm::vec3 v2;
-    glm::vec3 v3;
-};
-
-STLmesh convertSTL(const char* filepath)
+STLmesh readSTL(const char* filepath)
 {
     // STL File format: https://people.sc.fsu.edu/~jburkardt/data/stlb/stlb.html
 
     // Vertice will have position and normal information
-    std::set<std::tuple<glm::vec3, glm::vec3, unsigned int>, compareVec3> vertices;
+    std::set<std::tuple<glm::vec3, glm::vec3, unsigned int>, compareVec3> vertexes;
     std::vector<unsigned int> indices;
 
     std::string localDir = "";
@@ -35,14 +27,13 @@ STLmesh convertSTL(const char* filepath)
         is.seekg(84+50*t);
 
         // Normal vector
-        is.read((char*) &temp, sizeof(glm::vec3));
-        temp_normal = temp;
+        is.read((char*) &temp_normal, sizeof(glm::vec3));
 
         // 3 Vertexes
         for (int i = 0; i < 3; i++)
         {
             is.read((char*) &temp, sizeof(glm::vec3));
-            temp_pair = vertices.insert(std::tuple<glm::vec3, glm::vec3, unsigned int>(temp, temp_normal, indice));
+            temp_pair = vertexes.insert(std::tuple<glm::vec3, glm::vec3, unsigned int>(temp, temp_normal, indice));
 
             // If inserted successfully, increment indice count and push a new indice value.  Else, find the copied vertex and push it's indice value.
             if (temp_pair.second)
@@ -52,16 +43,122 @@ STLmesh convertSTL(const char* filepath)
             } else 
             {
                 std::tuple<glm::vec3, glm::vec3, unsigned int> temp_vertex = (*(temp_pair.first));
-                vertices.erase(temp_vertex);
+                vertexes.erase(temp_vertex);
 
                 indices.push_back(std::get<2>(temp_vertex));
 
                 temp_vertex = std::make_tuple(std::get<0>(temp_vertex), std::get<1>(temp_vertex) + temp_normal, std::get<2>(temp_vertex));
-                vertices.insert(temp_vertex);
+                vertexes.insert(temp_vertex);
             }
         }
         
     }
     is.close();
-    return STLmesh{vertices, indices};
+    return STLmesh{vertexes, indices};
+}
+
+// Basically the same function as above, but packs the vertex and indice information into a binary file.
+/*
+Format:
+    # of vertexes, unsigned int - 4 bytes
+    # of indices, unsigned int - 4 bytes
+
+    For each vertex:
+        vec3 position, 3 floats with 4 bytes each
+        vec3 normal (normalized), 3 floats with 4 bytes each
+    
+    For each indice
+        unsigned int indice, 4 bytes
+
+*/
+void packSTL(const char* stl_path, const char* output_path)
+{
+    std::set<std::tuple<glm::vec3, glm::vec3, unsigned int>, compareVec3> vertexes;
+    std::vector<unsigned int> indices;
+
+    std::ifstream is(stl_path, std::ios::binary);
+
+    is.seekg(80);
+    unsigned int numTriangles;
+    is.read((char*) &numTriangles, sizeof(unsigned int));
+
+    glm::vec3 temp;
+    unsigned int indice = 0;
+    std::pair<std::set<std::tuple<glm::vec3, glm::vec3, unsigned int>>::iterator,bool> temp_pair;
+    glm::vec3 temp_normal;
+
+    for (int t = 0; t < numTriangles; t++)
+    {
+        is.seekg(84+50*t);
+
+        is.read((char*) &temp_normal, sizeof(glm::vec3));
+
+        for (int i = 0; i < 3; i++)
+        {
+            is.read((char*) &temp, sizeof(glm::vec3));
+            temp_pair = vertexes.insert(std::tuple<glm::vec3, glm::vec3, unsigned int>(temp, temp_normal, indice));
+
+            if (temp_pair.second)
+            {
+                indices.push_back(indice);
+                indice++;
+            } else 
+            {
+                std::tuple<glm::vec3, glm::vec3, unsigned int> temp_vertex = (*(temp_pair.first));
+                vertexes.erase(temp_vertex);
+
+                indices.push_back(std::get<2>(temp_vertex));
+
+                temp_vertex = std::make_tuple(std::get<0>(temp_vertex), std::get<1>(temp_vertex) + temp_normal, std::get<2>(temp_vertex));
+                vertexes.insert(temp_vertex);
+            }
+        }
+        
+    }
+    is.close();
+    
+    // Packing
+    std::fstream fs(output_path, std::fstream::in | std::fstream::binary | std::fstream::trunc);
+    fs << (unsigned int) vertexes.size() << (unsigned int) indices.size();
+    for (std::tuple<glm::vec3, glm::vec3, unsigned int> v : vertexes)
+    {
+        fs << std::get<0>(v).x << std::get<0>(v).y << std::get<0>(v).z << std::get<1>(v).x << std::get<1>(v).y << std::get<1>(v).z;
+    }
+    for (unsigned int i : indices)
+    {
+        fs << i;
+    }
+    fs.close();
+}
+
+void readPackedSTL(const char* data_path)
+{
+    // Reading packed file
+    std::vector<glm::vec3> vertexes;
+    // Normals per vertex
+    std::vector<glm::vec3> normals;
+    std::vector<unsigned int> indices;
+    unsigned int vertex_len;
+    unsigned int ind_len;
+
+    std::ifstream is(data_path, std::ios::out | std::ios::binary);
+    is.seekg(0);
+    is.read((char*)&vertex_len, sizeof(unsigned int));
+    is.read((char*)&ind_len, sizeof(unsigned int));
+    glm::vec3 temp;
+    for (int i = 0; i < vertex_len; i++) 
+    {
+        is.read((char*)&temp, sizeof(glm::vec3));
+        vertexes.push_back(temp);
+        is.read((char*)&temp, sizeof(glm::vec3));
+        normals.push_back(temp);
+    }
+    
+    unsigned int temp_i;
+    for (int i = 0; i < vertex_len; i++) 
+    {
+        is.read((char*)&temp, sizeof(unsigned int));
+        indices.push_back(temp_i);
+    }
+    is.close();
 }

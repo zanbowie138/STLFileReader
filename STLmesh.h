@@ -26,4 +26,6 @@ struct STLmesh
     std::vector<unsigned int> indices;
 };
 
-STLmesh convertSTL(const char* filepath);
+STLmesh readSTL(const char* filepath);
+void packSTL(const char* stl_path, const char* output_path);
+void readPackedSTL(const char* data_path);

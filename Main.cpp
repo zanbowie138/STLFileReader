@@ -4,7 +4,7 @@
 
 int main()
 {
-    STLmesh mesh = convertSTL("cube.stl");
+    STLmesh mesh = readSTL("cube.stl");
 
     std::cout << "Finished reading!" << std::endl;
     std::cout << "Length of vertice array is: " << mesh.vertices.size() << std::endl;
