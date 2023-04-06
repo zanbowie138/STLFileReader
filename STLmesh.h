@@ -23,7 +23,7 @@ struct compareVec3
 
 struct STLmesh
 {
-    std::set<std::tuple<glm::vec3, glm::vec3, unsigned int>, compareVec3> vertices;
+    std::vector<std::pair<glm::vec3, glm::vec3>> vertices;
     std::vector<unsigned int> indices;
 };
 
