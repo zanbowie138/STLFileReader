@@ -54,16 +54,16 @@ STLmesh readSTL(const char* filepath)
     }
     is.close();
 
-    std::pair<glm::vec3, glm::vec3> vertexes_sorted[vertexes.size()];
+    std::vector<std::pair<glm::vec3, glm::vec3>> vertexes_sorted(vertexes.size());
     
-    for (std::tuple<glm::vec3, glm::vec3, unsigned int> t : vertexes)
+    for (const std::tuple<glm::vec3, glm::vec3, unsigned int>& t : vertexes)
     {
         vertexes_sorted[std::get<2>(t)] = std::pair<glm::vec3, glm::vec3>{std::get<0>(t),std::get<1>(t)};
     }
 
     std::vector<std::pair<glm::vec3, glm::vec3>> vertices_vector;
 
-    for (std::pair<glm::vec3, glm::vec3> t: vertexes_sorted)
+    for (const std::pair<glm::vec3, glm::vec3>& t: vertexes_sorted)
     {
         vertices_vector.push_back(t);
     }

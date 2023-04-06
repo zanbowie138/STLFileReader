@@ -4,7 +4,7 @@
 
 int main()
 {
-    packSTL("cube.stl", "output.dat");
+    packSTL("paladin.stl", "output.dat");
 
     /*STLmesh mesh = readSTL("cube.stl");
 
