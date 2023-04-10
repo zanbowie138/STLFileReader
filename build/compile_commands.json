@@ -1,0 +1,7 @@
+[
+{
+  "directory": "/workspaces/STLFileReader/build",
+  "command": "/usr/bin/clang++    -g   -o CMakeFiles/ChessSTL.dir/main.cpp.o -c /workspaces/STLFileReader/main.cpp",
+  "file": "/workspaces/STLFileReader/main.cpp"
+}
+]
