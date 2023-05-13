@@ -1,106 +1,83 @@
 #include <iostream>
-
-#include <fstream>
-#include <set>
 #include <vector>
-#include <iostream>
-#include <iterator>
-#include <tuple>
+#include <fstream>
+#include <unordered_map>
+#include <utility>
 
 #include "include/glm/vec3.hpp"
-#include "include/glm/vector_relational.hpp"
 #include "include/glm/geometric.hpp"
+#include "include/glm/gtx/hash.hpp"
 
-struct compareVec3
+struct ModelPt
 {
-    // Adapted from https://stackoverflow.com/questions/46636721/how-do-i-use-glm-vector-relational-functions
-    bool operator() (const std::tuple<glm::vec3, glm::vec3, unsigned int>& lhs, const std::tuple<glm::vec3, glm::vec3, unsigned int>& rhs) const
-    {
-        glm::vec3 nequ = glm::notEqual(std::get<0>(lhs), std::get<0>(rhs));
-        return glm::lessThan(std::get<0>(lhs), std::get<0>(rhs))[nequ[0] ? 0 : (nequ[1] ? 1 : 2)];
-    }
-};
-struct STLmesh
-{
-    std::vector<std::pair<glm::vec3, glm::vec3>> vertices;
-    std::vector<unsigned int> indices;
+    glm::vec3 position;
+    glm::vec3 normal;
 };
 
-STLmesh readSTL(const char* filepath);
-void packSTL(const char* stl_path, const char* output_path);
-void readPackedSTL(const char* data_path);
+static std::pair<std::vector<ModelPt>, std::vector<unsigned int>> ReadSTL(const char* filepath);
+void PackSTL(const char* stl_path, const char* output_path);
+static std::pair<std::vector<ModelPt>, std::vector<unsigned int>> ReadPackedSTL(const char* filepath);
 
-STLmesh readSTL(const char* filepath)
+static std::pair<std::vector<ModelPt>, std::vector<unsigned int>> ReadSTL(const char* filepath)
 {
     // STL File format: https://people.sc.fsu.edu/~jburkardt/data/stlb/stlb.html
 
-    // Vertice will have position and normal information
-    std::set<std::tuple<glm::vec3, glm::vec3, unsigned int>, compareVec3> vertexes;
+    std::vector<ModelPt> points;
     std::vector<unsigned int> indices;
 
-    std::string localDir = "";
-    std::ifstream is((localDir + filepath), std::ios::binary);
+    std::unordered_map<glm::vec3, unsigned int, std::hash<glm::vec3>> pointToIndex;
+
+    std::ifstream is(filepath, std::ios::binary);
 
     // First 80 chars is the header (title)
-    // Next is the number of triangles, which is an unsigned integer (4 bytes or 4 chars).  Buffer index is offset by 80 chars
     is.seekg(80);
+
+    // Next is the number of triangles, which is an unsigned integer (4 bytes or 4 chars).  Buffer index is offset by 80 chars
     unsigned int numTriangles;
-    is.read((char*) &numTriangles, sizeof(unsigned int));
+    is.read(reinterpret_cast<char*>(&numTriangles), sizeof(unsigned int));
 
-    std::cout << "Number of triangles: " << numTriangles << std::endl;
+    unsigned int currentIndex = 0;
 
-    glm::vec3 temp;
-    unsigned int indice = 0;
-    std::pair<std::set<std::tuple<glm::vec3, glm::vec3, unsigned int>>::iterator,bool> temp_pair;
-    glm::vec3 temp_normal;
-
-    for (int t = 0; t < numTriangles; t++)
+    for (unsigned int t = 0; t < numTriangles; t++)
     {
-        is.seekg(84+50*t);
+        // Jump to triangle location
+        is.seekg(t * 50 + 84);
 
-        // Normal vector
-        is.read((char*)&temp_normal, sizeof(glm::vec3));
+        // Normal vector for entire triangle
+        glm::vec3 tempNormal;
+        is.read(reinterpret_cast<char*>(&tempNormal), sizeof(glm::vec3));
 
-        // 3 Vertexes
-        for (int i = 0; i < 3; i++)
+        // 3 points per triangle
+        for (int p = 0; p < 3; p++)
         {
-            is.read((char*)&temp, sizeof(glm::vec3));
-            temp_pair = vertexes.insert(std::tuple<glm::vec3, glm::vec3, unsigned int>(temp, temp_normal, indice));
+            glm::vec3 tempPos;
+            is.read(reinterpret_cast<char*>(&tempPos), sizeof(glm::vec3));
 
-            // If inserted successfully, increment indice count and push a new indice value.  Else, find the copied vertex and push it's indice value.
-            if (temp_pair.second)
+            auto iterator = pointToIndex.find(tempPos);
+            if (iterator == pointToIndex.end())
             {
-                indices.push_back(indice);
-                indice++;
-            } else 
+                // If the current point is new
+                pointToIndex.insert(std::make_pair(tempPos, currentIndex));
+                points.emplace_back(ModelPt{ tempPos, tempNormal });
+                indices.push_back(currentIndex);
+                currentIndex++;
+            }
+            else
             {
-                std::tuple<glm::vec3, glm::vec3, unsigned int> temp_vertex = (*(temp_pair.first));
-                vertexes.erase(temp_vertex);
-
-                indices.push_back(std::get<2>(temp_vertex));
-
-                temp_vertex = std::make_tuple(std::get<0>(temp_vertex), std::get<1>(temp_vertex) + temp_normal, std::get<2>(temp_vertex));
-                vertexes.insert(temp_vertex);
+                indices.push_back(iterator->second);
+                // Add normal to existing point normal
+                points[iterator->second].normal = points[iterator->second].normal + tempNormal;
             }
         }
     }
     is.close();
 
-    std::vector<std::pair<glm::vec3, glm::vec3>> vertexes_sorted(vertexes.size());
-    
-    for (const std::tuple<glm::vec3, glm::vec3, unsigned int>& t : vertexes)
+    for (auto& point : points)
     {
-        vertexes_sorted[std::get<2>(t)] = std::pair<glm::vec3, glm::vec3>{std::get<0>(t),std::get<1>(t)};
+        point.normal = glm::normalize(point.normal);
     }
 
-    std::vector<std::pair<glm::vec3, glm::vec3>> vertices_vector;
-
-    for (const std::pair<glm::vec3, glm::vec3>& t: vertexes_sorted)
-    {
-        vertices_vector.push_back(t);
-    }
-
-    return STLmesh{vertices_vector, indices};
+    return std::make_pair(points, indices);
 }
 
 // Packs the vertex and indice information into a binary file.
@@ -112,102 +89,96 @@ Format:
     For each vertex:
         vec3 position, 3 floats with 4 bytes each
         vec3 normal (normalized), 3 floats with 4 bytes each
-    
+
     For each indice
         unsigned int indice, 4 bytes
 */
-void packSTL(const char* stl_path, const char* output_path)
+void PackSTL(const char* stl_path, const char* output_path)
 {
-    STLmesh stl = readSTL(stl_path);
+    auto stl = ReadSTL(stl_path);
 
     std::cout << "Packing..." << std::endl;
-    
+
     // Packing
     std::ofstream fs(output_path, std::ofstream::in | std::ofstream::binary | std::ofstream::trunc);
 
-    unsigned int size_temp = stl.vertices.size();
-    fs.write((char*)&size_temp, sizeof(unsigned int));
-    size_temp = stl.indices.size();
-    fs.write((char*)&size_temp, sizeof(unsigned int));
+    // Write amount of points
+    unsigned int sizeTemp = stl.first.size();
+    fs.write(reinterpret_cast<char*>(&sizeTemp), sizeof(sizeTemp));
 
-    for (std::pair<glm::vec3, glm::vec3> v : stl.vertices)
+    // Write amount of indices
+    sizeTemp = stl.second.size();
+    fs.write(reinterpret_cast<char*>(&sizeTemp), sizeof(sizeTemp));
+
+    for (auto& point : stl.first)
     {
-        fs.write((char*)&v.first, sizeof(glm::vec3));
+        fs.write(reinterpret_cast<char*>(&point.position), sizeof(glm::vec3));
 
-        glm::vec3 norm_normal = glm::normalize(v.second);
-        fs.write((char*)&(norm_normal), sizeof(glm::vec3));
+        glm::vec3 normalized = glm::normalize(point.normal);
+        fs.write(reinterpret_cast<char*>(&normalized), sizeof(glm::vec3));
     }
 
-    for (unsigned int i : stl.indices)
+    for (auto& index : stl.second)
     {
-        fs.write((char*)&i, sizeof(unsigned int));
+        fs.write(reinterpret_cast<char*>(&index), sizeof(unsigned int));
     }
     fs.close();
 }
 
-void readPackedSTL(const char* data_path)
+static std::pair<std::vector<ModelPt>, std::vector<unsigned int>> ReadPackedSTL(const char* filepath)
 {
-    std::ifstream is(data_path, std::ios::out | std::ios::binary);
-
+    // Reading packed file
+    std::ifstream is(filepath, std::ios::out | std::ios::binary);
     is.seekg(0);
 
-    // Reading packed file
-    unsigned int vertex_len;
-    unsigned int ind_len;
-    
-    is.read((char*)&vertex_len, sizeof(unsigned int));
-    is.read((char*)&ind_len, sizeof(unsigned int));
+    // Get vertex amount
+    unsigned int vertexAmount;
+    is.read(reinterpret_cast<char*>(&vertexAmount), sizeof(unsigned int));
 
-    glm::vec3 vertexes[vertex_len];
-    unsigned int indices[ind_len];
-    glm::vec3 normals[vertex_len];
+    // Get index amount
+    unsigned int indexAmount;
+    is.read(reinterpret_cast<char*>(&indexAmount), sizeof(unsigned int));
 
-    glm::vec3 temp;
-    for (int i = 0; i < (int)vertex_len; i++) 
+    // Read position and normal information
+    ModelPt tempPt{};
+    std::vector<ModelPt> vertices;
+    vertices.reserve(vertexAmount);
+    for (int i = 0; i < static_cast<int>(vertexAmount); i++)
     {
-        is.read((char*)&temp, sizeof(glm::vec3));
-        vertexes[i] = temp;
-        is.read((char*)&temp, sizeof(glm::vec3));
-        normals[i] = temp;
+        is.read(reinterpret_cast<char*>(&tempPt.position), sizeof(glm::vec3));
+        is.read(reinterpret_cast<char*>(&tempPt.normal), sizeof(glm::vec3));
+        vertices.emplace_back(tempPt);
     }
-    
-    unsigned int temp_i;
-    for (int i = 0; i < (int)ind_len; i++) 
+
+    // Read index information
+    unsigned int tempIndex;
+    std::vector<unsigned int> indices;
+    indices.reserve(indexAmount);
+    for (int i = 0; i < static_cast<int>(indexAmount); i++)
     {
-        is.read((char*)&temp_i, sizeof(unsigned int));
-        indices[i] = temp_i;
+        is.read(reinterpret_cast<char*>(&tempIndex), sizeof(unsigned int));
+        indices.push_back(tempIndex);
     }
     is.close();
+
+    return std::make_pair(vertices, indices);
 }
 
 int main()
 {
-    packSTL("stl/ChessSTL/rook.STL", "bin/rook.bin");
-    packSTL("stl/ChessSTL/pawn.STL", "bin/pawn.bin");
-    packSTL("stl/ChessSTL/queen.STL", "bin/queen.bin");
-    packSTL("stl/ChessSTL/king.STL", "bin/king.bin");
-    packSTL("stl/ChessSTL/horse.STL", "bin/horse.bin");
-    packSTL("stl/ChessSTL/bishop.STL", "bin/bishop.bin");
-    std::cout << "Finished packing!" << std::endl;
-
-    /*STLmesh mesh = readSTL("cube.stl");
+    auto mesh = ReadSTL("stl/cube.stl");
 
     std::cout << "Finished reading!" << std::endl;
-    std::cout << "Length of vertice array is: " << mesh.vertices.size() << std::endl;
-    std::cout << "Length of indice array is: " << mesh.indices.size() << std::endl;
+    std::cout << "Length of vertice array is: " << mesh.first.size() << std::endl;
+    std::cout << "Length of indice array is: " << mesh.second.size() << std::endl;
 
-    // Printing out the output
+    PackSTL("stl/cube.stl", "cube.bin");
 
-    
-    for (std::pair<glm::vec3, glm::vec3> p: mesh.vertices)
-    {
-        std::cout << "Position: vec3(" << p.first.x << ", " << p.first.y << ", " << p.first.z << ")" << std::endl;
-        std::cout << "Normal: vec3(" << p.second.x << ", " << p.second.y << ", " << p.second.z << ")" << std::endl;
-    }
+    auto mesh2 = ReadPackedSTL("cube.bin");
 
-    for (int i = 0; i < mesh.indices.size(); i+=3) {
-        std::cout << mesh.indices[i] << " " << mesh.indices[i+1] << " " << mesh.indices[i+2] << std::endl;
-    }*/
+    std::cout << "Finished reading!" << std::endl;
+    std::cout << "Length of vertice array is: " << mesh2.first.size() << std::endl;
+    std::cout << "Length of indice array is: " << mesh2.second.size() << std::endl;
 
     return 0;
 }

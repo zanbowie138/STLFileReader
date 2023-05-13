@@ -1,1 +1,1 @@
-/usr/bin/clang++  -g  -rdynamic CMakeFiles/ChessSTL.dir/main.cpp.o  -o ChessSTL 
+/usr/bin/clang++ -g -rdynamic CMakeFiles/ChessSTL.dir/Main.cpp.o -o ChessSTL 

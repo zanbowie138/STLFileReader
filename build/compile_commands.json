@@ -1,7 +1,8 @@
 [
 {
   "directory": "/workspaces/STLFileReader/build",
-  "command": "/usr/bin/clang++    -g   -o CMakeFiles/ChessSTL.dir/main.cpp.o -c /workspaces/STLFileReader/main.cpp",
-  "file": "/workspaces/STLFileReader/main.cpp"
+  "command": "/usr/bin/clang++   -g -o CMakeFiles/ChessSTL.dir/Main.cpp.o -c /workspaces/STLFileReader/Main.cpp",
+  "file": "/workspaces/STLFileReader/Main.cpp",
+  "output": "CMakeFiles/ChessSTL.dir/Main.cpp.o"
 }
 ]
